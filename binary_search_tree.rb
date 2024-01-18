@@ -105,6 +105,25 @@ class Tree
     end
     cursor
   end
+
+  def level_order
+    return if @root.nil?
+
+    queue = [@root]
+    values = []
+
+    until queue.empty?
+      current = queue.shift
+      if block_given?
+        yield current
+      else
+        values.push(current.data)
+      end
+      queue.push(current.left) unless current.left.nil?
+      queue.push(current.right) unless current.right.nil?
+    end
+    return values unless block_given?
+  end
 end
 
 test = Tree.new([1, 7, 4, 23, 8, 9, 4, 3, 5, 7, 9, 67, 6345, 324])
@@ -120,3 +139,5 @@ p test.delete(67)
 test.pretty_print
 p test.find(6345)
 p test.find(7000)
+p test.level_order
+p test.level_order { |node| print "#{node.data + 1}:" }
