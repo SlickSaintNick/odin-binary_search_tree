@@ -124,6 +124,51 @@ class Tree
     end
     return values unless block_given?
   end
+
+  def inorder(node = @root, values = [])
+    return if node.nil?
+
+    inorder(node.left, values)
+    if block_given?
+      yield node
+    else
+      values.push(node.data)
+    end
+    inorder(node.right, values)
+    values unless values.nil?
+  end
+
+  def preorder(node = @root, values = [])
+    return if node.nil?
+
+    if block_given?
+      yield node
+    else
+      values.push(node.data)
+    end
+    preorder(node.left, values)
+    preorder(node.right, values)
+    values unless values.nil?
+  end
+
+  def postorder(node = @root, values = [])
+    return if node.nil?
+
+    postorder(node.left, values)
+    postorder(node.right, values)
+    if block_given?
+      yield node
+    else
+      values.push(node.data)
+    end
+    values unless values.nil?
+  end
+
+  def height(root = @root)
+    return nil if root.nil?
+
+    [height(root.left), height(root.right)].compact.max.to_i + 1
+  end
 end
 
 test = Tree.new([1, 7, 4, 23, 8, 9, 4, 3, 5, 7, 9, 67, 6345, 324])
@@ -141,3 +186,7 @@ p test.find(6345)
 p test.find(7000)
 p test.level_order
 p test.level_order { |node| print "#{node.data + 1}:" }
+p test.inorder
+p test.preorder
+p test.postorder
+p test.height
