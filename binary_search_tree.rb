@@ -29,14 +29,9 @@ class Tree
     root
   end
 
-  def cursor_to_leaf(value)
+  def insert(value)
     cursor = Node.new(@root.data, @root.left, @root.right)
     cursor = value < cursor.data ? cursor.left : cursor.right until cursor.left.nil? && cursor.right.nil?
-    cursor
-  end
-
-  def insert(value)
-    cursor = cursor_to_leaf(value)
     if value < cursor.data
       cursor.left = Node.new(value)
     else
@@ -57,8 +52,8 @@ class Tree
       return root
     end
 
-    # At this point, root is the node to be deleted.
-
+    # At this point, root is the node to be deleted. No children... delete. One child... swap and delete.
+    # Two children... replace the node with its successor and delete (successor will have max one child).
     if root.left.nil?
       return replace_node(root, root.right)
     elsif root.right.nil?
@@ -169,24 +164,67 @@ class Tree
 
     [height(root.left), height(root.right)].compact.max.to_i + 1
   end
+
+  def depth(node)
+    cursor = Node.new(@root.data, @root.left, @root.right)
+    depth = 0
+
+    until node.nil? || cursor.data == node.data
+      cursor = node.data < cursor.data ? cursor.left : cursor.right
+      depth += 1
+    end
+
+    node.nil? ? nil : depth
+  end
+
+  def balanced?(node = @root)
+    return if node.nil?
+
+    return true if (height(node.left).to_i - height(node.right).to_i).abs <= 1
+
+    return false unless balanced?(node.left) && balanced?(node.right)
+  end
+
+  def rebalance
+    @root = build_tree(inorder)
+  end
+
 end
 
-test = Tree.new([1, 7, 4, 23, 8, 9, 4, 3, 5, 7, 9, 67, 6345, 324])
-test.pretty_print
-p test.insert(2)
-p test.insert(6000)
-test.pretty_print
-p test.delete(2)
-p test.delete(7)
-p test.delete(9)
-test.pretty_print
-p test.delete(67)
-test.pretty_print
-p test.find(6345)
-p test.find(7000)
-p test.level_order
-p test.level_order { |node| print "#{node.data + 1}:" }
-p test.inorder
-p test.preorder
-p test.postorder
-p test.height
+def press_enter
+  puts 'Press Enter to continue...'
+  gets
+end
+
+# Driver script
+
+
+tree = Tree.new(Array.new(15) { rand(1..100) })
+tree.pretty_print
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+puts 'Elements in order:'
+puts "Level Order: #{tree.level_order}"
+puts "Preorder:    #{tree.preorder}"
+puts "Postorder:   #{tree.postorder}"
+puts "Inorder:     #{tree.inorder}"
+press_enter
+puts 'Adding large numbers to unbalance the tree...'
+tree.insert(120)
+tree.insert(140)
+tree.insert(160)
+tree.insert(180)
+tree.insert(200)
+tree.pretty_print
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+tree.rebalance
+tree.pretty_print
+puts 'Rebalancing...'
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+puts 'Elements in order:'
+puts "Level Order: #{tree.level_order}"
+puts "Preorder:    #{tree.preorder}"
+puts "Postorder:   #{tree.postorder}"
+puts "Inorder:     #{tree.inorder}"
