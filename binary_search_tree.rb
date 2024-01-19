@@ -15,21 +15,12 @@ class Node
   end
 end
 
-class TreePrinter
-  def initialize(root)
-    @root = root
-  end
+# Handles iterating over the tree.
+class TreeIterator
+  def level_order(root, &block)
+    return if root.nil?
 
-  def pretty_print(node = @root, prefix = '', is_left = true)
-    pretty_print(node.right, "#{prefix}#{is_left ? '|   ' : '    '}", false) if node.right
-    puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.data}"
-    pretty_print(node.left, "#{prefix}#{is_left ? '    ' : '|   '}", true) if node.left
-  end
-
-  def level_order(&block)
-    return if @root.nil?
-
-    queue = [@root]
+    queue = [root]
     values = []
 
     until queue.empty?
@@ -45,7 +36,7 @@ class TreePrinter
     return values unless block_given?
   end
 
-  def inorder(node = @root, values = [], &block)
+  def inorder(node, values = [], &block)
     return if node.nil?
 
     inorder(node.left, values, &block)
@@ -58,7 +49,7 @@ class TreePrinter
     values unless values.nil?
   end
 
-  def preorder(node = @root, values = [], &block)
+  def preorder(node, values = [], &block)
     return if node.nil?
 
     if block_given?
@@ -71,7 +62,7 @@ class TreePrinter
     values unless values.nil?
   end
 
-  def postorder(node = @root, values = [], &block)
+  def postorder(node, values = [], &block)
     return if node.nil?
 
     postorder(node.left, values, &block)
@@ -91,7 +82,7 @@ class Tree
 
   def initialize(array)
     @root = build_tree(array.sort.uniq)
-    @printer = TreePrinter.new(@root)
+    @printer = TreeIterator.new
   end
 
   def build_tree(array, start_index = 0, end_index = array.length - 1)
@@ -104,14 +95,25 @@ class Tree
     root
   end
 
+  # Method from The Odin Project.
+  def pretty_print(node = @root, prefix = '', is_left = true)
+    return puts 'Tree is empty.' if node.nil?
+
+    pretty_print(node.right, "#{prefix}#{is_left ? '|   ' : '    '}", false) if node.right
+    puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.data}"
+    pretty_print(node.left, "#{prefix}#{is_left ? '    ' : '|   '}", true) if node.left
+  end
+
   def insert(value)
-    return build_tree([value]) if @root.nil?
+    return @root = build_tree([value]) if @root.nil?
 
     cursor = @root.clone
     cursor = value < cursor.data ? cursor.left : cursor.right until cursor.left.nil? && cursor.right.nil?
     if value < cursor.data
+      @root.left = Node.new(value) if cursor.data == @root.data
       cursor.left = Node.new(value)
     else
+      @root.right = Node.new(value) if cursor.data == @root.data
       cursor.right = Node.new(value)
     end
   end
@@ -130,66 +132,48 @@ class Tree
       # One or no children... swap and delete.
       # Two children... replace the node with its successor and delete.
       # (Successor will have max one child by definition).
-      if root.left.nil?
+      if root.left.nil? && root.right.nil?
+        @root = nil if root == @root
+        root = nil
+      elsif root.left.nil?
+        @root = root.right if root == @root
         root = root.right
       elsif root.right.nil?
+        @root = root.left if root == @root
         root = root.left
       else
-        return replace_with_successor(root)
+        successor = find_successor(root.right)
+        root.data = successor.data
+        root.right = delete(root.right, successor.data)
       end
     end
     root
   end
 
-  # def replace_node(origin, replacement)
-  #   replacement
-  # end
-
-  def replace_with_successor(root)
-    successor_parent = root
-    successor = root.right
-    until successor.left.nil?
-      successor_parent = successor
-      successor = successor.left
-    end
-    if successor_parent != root
-      successor_parent.left = successor.right
-    else
-      successor_parent.right = successor.right
-    end
-
-    root.data = successor.data
-
-    successor = nil
-    root
+  def find_successor(node)
+    node = node.left while node.left
+    node
   end
 
   def find(value)
     cursor = @root.clone
-    until cursor.nil? || cursor.data == value
-      cursor = value < cursor.data ? cursor.left : cursor.right
-    end
-    cursor
-  end
-
-  def pretty_print
-    @printer.pretty_print(@root)
+    cursor = value < cursor.data ? cursor.left : cursor.right until cursor.nil? || cursor.data == value
   end
 
   def level_order(&block)
-    @printer.level_order(&block)
+    @printer.level_order(@root, &block)
   end
 
   def inorder(&block)
-    @printer.inorder(&block)
+    @printer.inorder(@root, &block)
   end
 
   def preorder(&block)
-    @printer.preorder(&block)
+    @printer.preorder(@root, &block)
   end
 
   def postorder(&block)
-    @printer.postorder(&block)
+    @printer.postorder(@root, &block)
   end
 
   def height(root = @root)
@@ -215,13 +199,12 @@ class Tree
 
     return true if (height(node.left).to_i - height(node.right).to_i).abs <= 1
 
-    return false unless balanced?(node.left) && balanced?(node.right)
+    false unless balanced?(node.left) && balanced?(node.right)
   end
 
   def rebalance
     @root = build_tree(inorder)
   end
-
 end
 
 def press_enter
@@ -229,52 +212,89 @@ def press_enter
   gets
 end
 
-# # Driver script
-# tree = Tree.new(Array.new(15) { rand(1..100) })
-# tree.pretty_print
-# puts "Is the tree balanced? #{tree.balanced?}"
-# press_enter
-# puts 'Elements in order:'
-# puts tree.level_order { |value| "#{value} : "}
-# puts "Level Order: #{tree.level_order}"
-# puts "Preorder:    #{tree.preorder}"
-# puts "Postorder:   #{tree.postorder}"
-# puts "Inorder:     #{tree.inorder}"
-# press_enter
-# puts 'Adding large numbers to unbalance the tree...'
-# tree.insert(120)
-# tree.insert(140)
-# tree.insert(160)
-# tree.insert(180)
-# tree.insert(200)
-# tree.pretty_print
-# puts "Is the tree balanced? #{tree.balanced?}"
-# press_enter
-# tree.rebalance
-# tree.pretty_print
-# puts 'Rebalancing...'
-# puts "Is the tree balanced? #{tree.balanced?}"
-# press_enter
-# puts 'Elements in order:'
-# puts "Level Order: #{tree.level_order}"
-# puts "Preorder:    #{tree.preorder}"
-# puts "Postorder:   #{tree.postorder}"
-# puts "Inorder:     #{tree.inorder}"
-
-# tree = Tree.new(Array.new(15) { rand(1..100) })
-# tree.pretty_print
-# tree.level_order { |node| print "#{node.data}: " if node.data.even? }
-# print "\n"
-# tree.inorder { |node| print "#{node.data}: " if node.data.even? }
-# print "\n"
-# tree.preorder { |node| print "#{node.data}: " if node.data.even? }
-# print "\n"
-# tree.postorder { |node| print "#{node.data}: " if node.data.even? }
-# print "\n"
-
-tree = Tree.new([1, 2, 3, 4, 5])
-tree.delete(5)
-tree.delete(1)
-tree.delete(3)
-
+# Driver script
+# Demonstrate tree creation, insertion, iteration, rebalancing.
+tree = Tree.new(Array.new(15) { rand(1..100) })
 tree.pretty_print
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+puts 'Elements in order:'
+puts tree.level_order { |value| "#{value} : "}
+puts "Level Order: #{tree.level_order}"
+puts "Preorder:    #{tree.preorder}"
+puts "Postorder:   #{tree.postorder}"
+puts "Inorder:     #{tree.inorder}"
+press_enter
+puts 'Adding large numbers to unbalance the tree...'
+tree.insert(120)
+tree.insert(140)
+tree.insert(160)
+tree.insert(180)
+tree.insert(200)
+tree.pretty_print
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+tree.rebalance
+tree.pretty_print
+puts 'Rebalancing...'
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+puts 'Elements in order:'
+puts "Level Order: #{tree.level_order}"
+puts "Preorder:    #{tree.preorder}"
+puts "Postorder:   #{tree.postorder}"
+puts "Inorder:     #{tree.inorder}"
+press_enter
+puts
+
+# Demonstrate iteration over the tree using blocks
+puts 'A new tree...'
+tree = Tree.new(Array.new(15) { rand(1..100) })
+tree.pretty_print
+puts 'Even elements in tree...'
+press_enter
+print 'Level Order - '
+tree.level_order { |node| print "#{node.data} : " if node.data.even? }
+print "\n"
+print 'Preorder    - '
+tree.preorder { |node| print "#{node.data} : " if node.data.even? }
+print "\n"
+print 'Inorder     - '
+tree.inorder { |node| print "#{node.data} : " if node.data.even? }
+print "\n"
+print 'Postorder   - '
+tree.postorder { |node| print "#{node.data} : " if node.data.even? }
+print "\n"
+puts
+
+# Demonstrate handling root node for insertion, deletion, rebalancing, and empty tree.
+puts 'A new tree...'
+tree = Tree.new([])
+tree.pretty_print
+press_enter
+puts 'Add some values one by one...'
+tree.insert(1)
+tree.insert(2)
+tree.insert(3)
+tree.insert(4)
+tree.insert(5)
+puts
+tree.pretty_print
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+tree.rebalance
+puts 'Rebalancing...'
+tree.pretty_print
+puts "Is the tree balanced? #{tree.balanced?}"
+press_enter
+puts 'Removing values...'
+tree.delete(3)
+tree.delete(2)
+tree.delete(1)
+tree.pretty_print
+puts 'Removing final two values...'
+tree.delete(4)
+tree.delete(5)
+tree.pretty_print
+puts 'Finished.'
+press_enter
